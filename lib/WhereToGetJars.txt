@@ -1,0 +1,2 @@
+The code in this modification links against the minecraft jars, lwjgl.jar and minecraft.jar.
+These can be obtained from your working copy of minecraft, in the bin subfolder.
