@@ -1,1 +1,5 @@
-This file was created by IntelliJ IDEA (Community Edition) IC-108.SNAPSHOT for binding GitHub repository
+This project is a modification for Minecraft client, version 1.2.5, which provides an 
+improved chat console within the game.
+
+Please see the lib/WhereToGetJars.txt file for information on obtaining the appropriate jars 
+for building this modification.
