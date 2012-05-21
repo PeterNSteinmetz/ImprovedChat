@@ -1,2 +1,7 @@
 The code in this modification links against the minecraft jars, lwjgl.jar and minecraft.jar.
 These can be obtained from your working copy of minecraft, in the bin subfolder.
+
+This library also requires the dzHooksManager library, which can be downloaded from
+http://wrongplace.be/files/minecraft_patches/final/1.2.4/%21REQUIRED/dzHooksManager/dzHooksManager.0.1_1.2.4.zip
+
+Copies of these two jar files and the zip file should be placed in the lib subdirectory of this project.

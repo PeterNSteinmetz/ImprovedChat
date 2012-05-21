@@ -4,5 +4,6 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry kind="lib" path="lib/lwjgl.jar"/>
 	<classpathentry kind="lib" path="lib/minecraft.jar"/>
+	<classpathentry kind="lib" path="lib/dzHooksManager.0.1_1.2.4.zip"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
