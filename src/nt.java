@@ -7,6 +7,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * Chatline object.
+ *
+ */
 public class nt {
 
     public String a;
