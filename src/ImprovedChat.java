@@ -27,7 +27,7 @@ public class ImprovedChat implements dzHookable {
 
     private static int fade = 0;
     public static int commandScroll = 0;
-    protected static Minecraft minecraft;
+    protected static Minecraft minecraft;	// minecraft client instance
     protected static Server Global;
     protected static Server Current;
     private static Hashtable<String, Server> servers = new Hashtable<String, Server>();
@@ -65,6 +65,7 @@ public class ImprovedChat implements dzHookable {
     private static Pattern varPinB = Pattern.compile("\'\\$\\w*\'");
     private static Pattern fixInvalidCharacter = Pattern.compile("\u00a7");
     private static Pattern TranslatablePart = Pattern.compile("(?<!§)\\w(\\w|\\s|\')*\\w");
+    // table of commands which user can execute
     private static Hashtable<String, icCommand> commands;
     private static Pattern scriptVar = Pattern.compile("\\$[0-9]+");
     private static Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
@@ -275,18 +276,18 @@ public class ImprovedChat implements dzHookable {
                     newElem(topElement, "blink");
                 }
 
-                Iterator var7 = var9.track.iterator();
+                Iterator<Pattern> patIter = var9.getLineFilter().getTrackPatterns().iterator();
 
                 Pattern p;
-                while (var7.hasNext()) {
-                    p = (Pattern) var7.next();
+                while (patIter.hasNext()) {
+                    p = patIter.next();
                     addTextNode(newElem(topElement, "track"), p.pattern());
                 }
 
-                var7 = var9.ignore.iterator();
+                patIter = var9.getLineFilter().getIgnorePatterns().iterator();
 
-                while (var7.hasNext()) {
-                    p = (Pattern) var7.next();
+                while (patIter.hasNext()) {
+                    p = patIter.next();
                     addTextNode(newElem(topElement, "ignore"), p.pattern());
                 }
 
@@ -887,6 +888,11 @@ public class ImprovedChat implements dzHookable {
         return minecraft.q;
     }
 
+    /**
+     * process line of user input after '/'
+     * @param line
+     * @return
+     */
     public static String processOutput(String line) {
         line = d[1].process(line);
         line = replaceVars(line);
@@ -901,6 +907,17 @@ public class ImprovedChat implements dzHookable {
 
     }
 
+    /**
+     * Draw GUI in game. 
+     * 
+     * Called from aiy object only. 
+     * 
+     * @param theGuiIngame
+     * @param fontRenderer
+     * @param var35
+     * @param var30
+     * @return
+     */
     public static int handle_draw(aiy theGuiIngame, nl fontRenderer, boolean var35, byte var30) {
         //boolean var36 = false;
         int ret = 0;
@@ -965,7 +982,7 @@ public class ImprovedChat implements dzHookable {
                 }
             }
 
-            String var12 = "";
+            String chatMessage = "";
 
             for (var11 = currentTab().chatScroll; var11 < currentTab().e.size() && var11 < var30 + currentTab().chatScroll; ++var11) {
                 if (getUpdateCounterOfChatLine(currentTab().e.get(var11)) < 200 || var35) {
@@ -990,10 +1007,10 @@ public class ImprovedChat implements dzHookable {
                     if (var38 > 0) {
                         byte var39 = 2;
                         int var26 = (-var11 + currentTab().chatScroll) * 9;
-                        var12 = getChatMessageOfChatLine(currentTab().e.get(var11));
+                        chatMessage = getChatMessageOfChatLine(currentTab().e.get(var11));
                         drawRectOnGuiIngame(theGuiIngame, var39, var26 - 1, var39 + 320, var26 + 8, (var38 << 24) + historyColor);
                         GL11.glEnable(GL11.GL_BLEND);
-                        drawStringWithShadow(fontRenderer, var12, var39, var26, 16777215);
+                        drawStringWithShadow(fontRenderer, chatMessage, var39, var26, 16777215);
                     }
                 }
             }
@@ -1167,6 +1184,10 @@ public class ImprovedChat implements dzHookable {
 
     }
 
+    /**
+     * Send a line when user types '/'
+     * @param line
+     */
     public static void send(String line) {
         line = line.trim();
         if (line.length() != 0) {
@@ -1219,11 +1240,11 @@ public class ImprovedChat implements dzHookable {
             }
 
             String var11 = colorTags.matcher(line).replaceAll("");
-            Iterator var5 = getCurrentServer().tabs.iterator();
+            Iterator tabsIter = getCurrentServer().tabs.iterator();
 
             Tab tab;
-            while (var5.hasNext()) {
-                tab = (Tab) var5.next();
+            while (tabsIter.hasNext()) {
+                tab = (Tab) tabsIter.next();
                 if (tab.valid(var11)) {
                     nt[] var9 = linesArray;
                     int var8 = linesArray.length;
@@ -1293,6 +1314,19 @@ public class ImprovedChat implements dzHookable {
         }
     }
 
+    /**
+     * Retrieve ignored or tracked patterns list from current tab.
+     * @param patType - checked if 'ignored' or track patterns otherwise
+     */
+    private List<Pattern> getCurrentTabPatterns(String patType) {
+        Server curServer = getCurrentServer();
+        Tab curTab = curServer.tabs.get(curServer.currentTabIndex);
+        LineFilter curFilter = curTab.getLineFilter();
+        List<Pattern> patList = patType.equals("ignore") ? curFilter.getIgnorePatterns() :
+        						  curFilter.getTrackPatterns();
+        return patList;
+    }
+    
     public ImprovedChat() {
         minecraftDir = Minecraft.a("minecraft");
         modDir = new File(minecraftDir, "mods" + File.separator + "wd1966");
@@ -1532,7 +1566,7 @@ public class ImprovedChat implements dzHookable {
                 return true;
             }
         });
-        commands.put("list", new icCommand("Lists variables, constants and rules(input, output or display)", "~list (bind|var|const|input|output|display|track|ignore)", "") {
+        commands.put("list", new icCommand("Lists variables, constants, rules(input, output or display), or patterns", "~list (bind|var|const|input|output|display|track|ignore)", "") {
             @Override
             public boolean process(String[] args) {
                 if (args != null && args.length >= 1) {
@@ -1543,26 +1577,23 @@ public class ImprovedChat implements dzHookable {
                     } else if (args[0].equalsIgnoreCase("const")) {
                         ImprovedChat.listConstants();
                     } else {
+                    	// handle input, output, display rules
                         if (!args[0].equalsIgnoreCase("track") && !args[0].equalsIgnoreCase("ignore")) {
                             return ImprovedChat.list(args[0].toLowerCase());
                         }
-
+                        // handle ignore or track patterns
                         ImprovedChat.unProccessedInput(args[0] + " rule list:");
-                        List<Pattern> list;
-                        if (args[0].equals("ignore")) {
-                            list = ImprovedChat.getCurrentServer().tabs.get(ImprovedChat.getCurrentServer().currentTabIndex).ignore;
-                        } else {
-                            list = ImprovedChat.getCurrentServer().tabs.get(ImprovedChat.getCurrentServer().currentTabIndex).track;
-                        }
+                        
+                        List<Pattern> patList = getCurrentTabPatterns(args[0]);
 
-                        if (list.size() == 0) {
+                        if (patList.size() == 0) {
                             ImprovedChat.unProccessedInput("Empty");
                         }
 
-                        Iterator var4 = list.iterator();
+                        Iterator<Pattern> patIter = patList.iterator();
 
-                        while (var4.hasNext()) {
-                            Pattern p = (Pattern) var4.next();
+                        while (patIter.hasNext()) {
+                            Pattern p = patIter.next();
                             ImprovedChat.unProccessedInput(p.toString());
                         }
                     }
@@ -1625,7 +1656,7 @@ public class ImprovedChat implements dzHookable {
                 return true;
             }
         });
-        commands.put("delete", new icCommand("deletes variables, binds or rules", "~delete (bind|var|input|output|display) <id>", "") {
+        commands.put("delete", new icCommand("deletes variables, binds, rules or patterns", "~delete (bind|var|input|output|display|ignore|track) <id>", "") {
             @Override
             public boolean process(String[] args) {
                 if (args != null && args.length >= 2) {
@@ -1642,18 +1673,13 @@ public class ImprovedChat implements dzHookable {
                                 ImprovedChat.removeRule(args[0], a);
                                 return true;
                             } else {
-                                ArrayList list;
-                                if (args[0].equals("ignore")) {
-                                    list = ImprovedChat.getCurrentServer().tabs.get(ImprovedChat.getCurrentServer().currentTabIndex).ignore;
-                                } else {
-                                    list = ImprovedChat.getCurrentServer().tabs.get(ImprovedChat.getCurrentServer().currentTabIndex).track;
-                                }
+                                List<Pattern> patList = getCurrentTabPatterns(args[0]);
 
-                                if (a >= list.size()) {
+                                if (a >= patList.size()) {
                                     ImprovedChat.stderr("Index out of bounds.");
                                     return false;
                                 } else {
-                                    list.remove(a);
+                                    patList.remove(a);
                                     return true;
                                 }
                             }
@@ -1915,6 +1941,11 @@ public class ImprovedChat implements dzHookable {
         // ChatHook.addHook(this);
     }
 
+    /**
+     * Process a line of user input.
+     * 
+     * @param line
+     */
     public static void process(String line) {
         if (line != null && !line.trim().equals("")) {
             if (!line.startsWith("~") && !line.startsWith("/")) {
@@ -1930,6 +1961,10 @@ public class ImprovedChat implements dzHookable {
         }
     }
 
+    /**
+     * Execute a client-side command.
+     * @param line
+     */
     public static void exec(String line) {
         if (!line.startsWith("(")) {
             String[] var7 = space.split(line, 2);
@@ -1938,7 +1973,8 @@ public class ImprovedChat implements dzHookable {
                 setCurrentServer(Global);
                 var7 = space.split(var7[1], 2);
             }
-
+            
+            // look up command in commands table by lowercase name
             icCommand var8 = commands.get(var7[0].toLowerCase());
             if (var8 == null) {
                 console("Command " + var7[0] + " doesn\'t exist.");
@@ -2064,12 +2100,20 @@ public class ImprovedChat implements dzHookable {
         return str;
     }
 
+    /**
+     * Check if chat mode is disabled.
+     * @return
+     */
     public static boolean isChatDisabled() {
         return chatDisabled;
     }
 
-    public static void setChatDisabled(boolean var0) {
-        chatDisabled = var0;
+    /**
+     * Set whether chat is disabled or enabled.
+     * @param disabled
+     */
+    public static void setChatDisabled(boolean disabled) {
+        chatDisabled = disabled;
     }
 
     @Override
