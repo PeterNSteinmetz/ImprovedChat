@@ -1,3 +1,7 @@
+/**
+ * Abstract base of classes which implement commands which can be executed by the user.
+ *
+ */
 public abstract class icCommand {
 
     public String usage;
