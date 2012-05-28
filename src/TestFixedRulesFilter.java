@@ -5,19 +5,24 @@ import static org.junit.Assert.*;
 
 
 public class TestFixedRulesFilter {
-
+	
 	FixedRulesFilter filt;
 	
 	@Before
 	public void setUp() throws Exception {
-		filt = new FixedRulesFilter("^ABC");
+		filt = new FixedRulesFilter();
 	}
 	
 	@Test
-	public void testMatching() {
-		assertTrue(filt.isValid("ABCDEF"));
-		assertFalse(filt.isValid("123ABC"));
-		assertFalse(filt.isValid("DEF hello"));
+	public void testLevelUpStyle() {
+		filt.setPrefixPattern("\\[P\\]");
+		filt.addAllowPattern("\\[P\\] Monsters:");
+		
+		assertTrue(filt.isValid("[G][P] Monsters:"));
+		assertTrue(filt.isValid("[G] Monsters:"));
+		assertTrue(filt.isValid("[P] Monsters:"));
+		assertFalse(filt.isValid("[P] tester"));
+		assertTrue(filt.isValid("Monsters"));
 	}
 	
 }
